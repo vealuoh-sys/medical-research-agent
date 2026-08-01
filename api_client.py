@@ -158,7 +158,7 @@ def _call_groq_raw(prompt, api_key, model="llama-3.3-70b-versatile", temperature
     }
     payload_bytes = json.dumps(payload).encode("utf-8")
 
-    for attempt in range(1, 5):
+    for attempt in range(1, 3):
         try:
             with make_post_request(url, payload_bytes, headers=headers) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
@@ -175,13 +175,8 @@ def _call_groq_raw(prompt, api_key, model="llama-3.3-70b-versatile", temperature
 
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                retry_header = e.headers.get("Retry-After") if e.headers else None
-                if retry_header and retry_header.isdigit():
-                    wait_sec = min(int(retry_header) + 2, 20)
-                else:
-                    wait_sec = 8 * attempt
-                print(f"Rate limited (HTTP 429) on Groq API. Waiting {wait_sec}s (Attempt {attempt}/4)...")
-                time.sleep(wait_sec)
+                print(f"Rate limited (HTTP 429) on Groq API. Waiting 5s (Attempt {attempt}/2)...")
+                time.sleep(5)
                 continue
             else:
                 print(f"Groq API Error (HTTP {e.code}): {e.reason}")
@@ -252,22 +247,22 @@ def _call_gemini_raw(prompt, api_key, model="gemini-2.0-flash", temperature=0.0)
 
 
 # ==============================================================================
-# SECTION 6: Unified Call — tries Groq first, falls back to Gemini
+# SECTION 6: Unified Call — tries Gemini first (paid, reliable), falls back
+#             to Groq (free tier, currently rate-limited on this account)
 # ==============================================================================
 # Every pipeline stage calls this same function name (call_groq_api) unchanged,
-# so the fallback is automatic and required no changes anywhere else in the
-# pipeline. If GEMINI_API_KEY isn't set, this behaves exactly as before
-# (Groq only). If both providers fail, it returns None honestly — it never
-# invents a response to keep the pipeline moving.
+# so this reordering required no changes anywhere else in the pipeline. If
+# GEMINI_API_KEY isn't set, this behaves exactly like the old Groq-only path.
+# If both providers fail, it returns None honestly — it never invents a
+# response to keep the pipeline moving.
 def call_groq_api(prompt, api_key, model="llama-3.3-70b-versatile", temperature=0.0, seed=42):
-    result = _call_groq_raw(prompt, api_key, model=model, temperature=temperature, seed=seed)
-    if result:
-        return result
-
     gemini_key = get_gemini_api_key()
-    if not gemini_key:
-        print("  -> No GEMINI_API_KEY configured, so no fallback is available.")
-        return None
+    if gemini_key:
+        result = _call_gemini_raw(prompt, gemini_key, temperature=temperature)
+        if result:
+            return result
+        print("  -> Gemini failed. Falling back to Groq...")
+    else:
+        print("  -> No GEMINI_API_KEY configured. Using Groq directly...")
 
-    print("  -> Groq failed. Falling back to Gemini...")
-    return _call_gemini_raw(prompt, gemini_key, temperature=temperature)
+    return _call_groq_raw(prompt, api_key, model=model, temperature=temperature, seed=seed)
