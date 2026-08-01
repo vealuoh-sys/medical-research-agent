@@ -81,6 +81,14 @@ if run_clicked:
         )
         st.stop()
 
+    # Optional fallback provider: if GEMINI_API_KEY is set as a Streamlit secret,
+    # expose it as an environment variable so api_client.py's automatic
+    # Groq -> Gemini fallback can find it (Streamlit secrets aren't
+    # automatically added to os.environ).
+    gemini_key = os.environ.get("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY", None)
+    if gemini_key and not os.environ.get("GEMINI_API_KEY"):
+        os.environ["GEMINI_API_KEY"] = gemini_key
+
     stages = [
         (0.05, "Stage 1: Searching PubMed", pipeline.run_stage_1, (topic,)),
         (0.15, "Stage 2: Gap analysis", pipeline.run_stage_2, (api_key,)),

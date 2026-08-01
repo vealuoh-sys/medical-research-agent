@@ -17,6 +17,13 @@ run Python, so it's deployed on **Hugging Face Spaces**, not GitHub Pages
 Your `GROQ_API_KEY` is set as a Space **Secret** — it is never entered into
 the page and never visible to anyone using the app.
 
+**Optional fallback provider:** if you also add a `GEMINI_API_KEY` secret
+(free, from Google AI Studio), the app automatically falls back to Gemini
+for any single call where Groq fails or is rate-limited. Every stage
+already calls the same function — that function now tries Groq first and
+only reaches for Gemini if Groq didn't answer. Leave `GEMINI_API_KEY`
+unset and the app behaves exactly as before (Groq only).
+
 ### 2. Local command line
 ```bash
 python run_full_pipeline.py "point of care HbA1c testing diagnostic accuracy"
