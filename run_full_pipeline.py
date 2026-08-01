@@ -26,6 +26,7 @@ import risk_of_bias as rob
 import meta_analysis as ma
 import draft_paper as dp
 import api_client as ac
+import journal_suggester as js
 
 
 # ==============================================================================
@@ -497,27 +498,7 @@ def run_stage_7():
 # STAGE 8: Programmatic Reference Assembly & Manuscript Drafting
 # ==============================================================================
 # Programmatically builds the References section directly from systematic_results.json metadata,
-# then calls Gemini API (temp=0, seed=42) to generate the full PRISMA manuscript draft.
-def run_stage_8(api_key):
-    print("\n==================================================")
-    print("  STAGE 8: Manuscript Generation & Programmatic Citations")
-    print("==================================================")
-    
-    # 1. Load systematic_results.json to programmatically construct References
-    sys_papers = sc.load_systematic_results("systematic_results.json")
-    sys_dict = {str(p["pmid"]).strip(): p for p in sys_papers} if sys_papers else {}
-    
-    # Load extraction_table.csv to get included PMIDs
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    ext_csv_path = os.path.join(script_dir, "extraction_table.csv")
-    
-    included_pmids = []
-    if os.path.exists(ext_csv_path):
-        with open(ext_csv_path, "r", encoding="utf-8") as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                included_pmids.append(row["pmid"].strip())
-                
+# then calls the LLM (temp=0, seed=42) to generate the full PRISMA manuscript draft.
 def run_stage_8(api_key, style="vancouver"):
     print("\n==================================================")
     print("  STAGE 8: PRISMA Manuscript & Word Document      ")
@@ -575,6 +556,32 @@ def run_stage_8(api_key, style="vancouver"):
     print(f"  - Text Manuscript: {output_path}")
     if docx_success:
         print(f"  - MS Word (.docx): {docx_path}")
+    return True
+
+
+# ==============================================================================
+# STAGE 9: Free/Open-Access Journal Suggestions
+# ==============================================================================
+# Queries DOAJ (Directory of Open Access Journals) for real, currently-listed
+# journals matching the paper's topic — never invents journal names.
+def run_stage_9(topic):
+    print("\n==================================================")
+    print("  STAGE 9: Journal Suggestions (DOAJ)             ")
+    print("==================================================")
+
+    journals = js.search_doaj_journals(topic, max_results=15)
+    if journals is None:
+        print("[FAIL] Stage 9: Could not reach DOAJ.")
+        return False
+
+    ranked = js.rank_journals(journals)
+    success, output_path = js.save_journal_suggestions(ranked, topic, filename="journal_suggestions.txt")
+    if not success:
+        print("[FAIL] Stage 9: Failed to save journal_suggestions.txt.")
+        return False
+
+    free_count = sum(1 for j in ranked if "No " in j["apc_note"])
+    print(f"[PASS] Stage 9 Complete: {len(ranked)} journals found ({free_count} free-to-publish) -> journal_suggestions.txt")
     return True
 
 
@@ -657,7 +664,12 @@ def main():
     if not ok8:
         print("\n[STOPPED] Pipeline halted at Stage 8. Please address error above.")
         sys.exit(1)
-        
+
+    # --- STAGE 9 ---
+    ok9 = run_stage_9(topic)
+    if not ok9:
+        print("\n[NOTICE] Stage 9 (journal suggestions) failed, but the manuscript is complete. Continuing.")
+
     elapsed = time.time() - start_time
     
     # ==============================================================================
@@ -688,6 +700,7 @@ def main():
     print("  8. meta_analysis_results.txt -> Bivariate & DerSimonian-Laird pooling & heterogeneity")
     print("  9. research_paper_draft.txt  -> Full PRISMA-DTA manuscript plain text draft")
     print(" 10. research_paper_draft.docx -> Formatted MS Word (.docx) publication manuscript")
+    print(" 11. journal_suggestions.txt  -> Real, DOAJ-verified open-access journal matches")
     print("================================================================================")
 
 
