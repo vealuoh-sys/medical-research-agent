@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoMed PRISMA-DTA — Autonomous Medical Research Agent</title>
+  <meta name="description" content="End-to-End Automated Systematic Review, QUADAS-2 Risk of Bias & Manuscript Generation Agent.">
+  <link rel="stylesheet" href="styles.css">
+  <!-- docx.js library for client-side Word document generation -->
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="logo-group">
+        <div class="logo-icon">🧬</div>
+        <div>
+          <div class="logo-title">AutoMed PRISMA-DTA</div>
+          <div style="font-size: 0.75rem; color: var(--text-muted);">Autonomous Systematic Review & Manuscript Agent</div>
+        </div>
+      </div>
+      <div style="display: flex; gap: 0.5rem;">
+        <span class="badge-tag">GitHub Pages Ready</span>
+        <span class="badge-tag">QUADAS-2 Audited</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main App Layout -->
+  <main class="main-wrapper">
+    
+    <!-- Sidebar Controls -->
+    <aside class="panel-card">
+      <div class="panel-header">
+        <div class="panel-title">⚡ Research Config</div>
+      </div>
+
+      <form id="configForm">
+        <!-- Topic Selection -->
+        <div class="form-group">
+          <label class="form-label" for="topicSelect">Research Topic</label>
+          <select id="topicSelect" class="form-select">
+            <option value="point of care HbA1c testing diagnostic accuracy">Point-of-Care HbA1c Testing Diagnostic Accuracy</option>
+            <option value="capillary ketone testing diabetic ketoacidosis sensitivity specificity">Capillary Ketone Testing in Diabetic Ketoacidosis</option>
+            <option value="breathomics diabetic ketoacidosis diagnostic performance">Breathomics & Volatile Biomarkers in DKA</option>
+            <option value="custom">Custom Research Topic...</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="customTopicGroup" style="display: none;">
+          <label class="form-label" for="customTopicInput">Enter Custom Topic</label>
+          <input type="text" id="customTopicInput" class="form-input" placeholder="e.g. rapid troponin point of care acute coronary syndrome">
+        </div>
+
+        <!-- Reference Style Switcher Toggle -->
+        <div class="form-group">
+          <label class="form-label">Reference Citation Style</label>
+          <div class="toggle-grid">
+            <button type="button" class="toggle-btn active" data-style="vancouver">Vancouver</button>
+            <button type="button" class="toggle-btn" data-style="apa">APA 7th</button>
+            <button type="button" class="toggle-btn" data-style="ama">AMA 11th</button>
+            <button type="button" class="toggle-btn" data-style="ieee">IEEE</button>
+          </div>
+        </div>
+
+        <!-- Groq API Key Input -->
+        <div class="form-group">
+          <label class="form-label" for="apiKeyInput">Groq API Key (Optional for Live Run)</label>
+          <input type="password" id="apiKeyInput" class="form-input" placeholder="gsk_... (Stored locally)">
+          <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Optional for pre-loaded audited dataset demo.
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <button type="button" id="btnLoadDemo" class="btn-primary" style="margin-bottom: 0.5rem;">
+          👁️ Load Audited HbA1c Dataset
+        </button>
+        <button type="submit" id="btnRunPipeline" class="btn-secondary">
+          ⚡ Run Live Agent Pipeline
+        </button>
+      </form>
+    </aside>
+
+    <!-- Workspace Area -->
+    <section class="panel-card">
+      
+      <!-- Navigation Tabs -->
+      <div class="tabs-header">
+        <button class="tab-btn active" data-tab="tabManuscript">📄 Manuscript Draft</button>
+        <button class="tab-btn" data-tab="tabPrisma">📊 PRISMA Flow</button>
+        <button class="tab-btn" data-tab="tabExtraction">📋 2x2 Data Table</button>
+        <button class="tab-btn" data-tab="tabQuadas">🛡️ QUADAS-2 Risk of Bias</button>
+      </div>
+
+      <!-- Tab 1: Manuscript Draft -->
+      <div id="tabManuscript" class="tab-content active">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <div style="font-weight: 600; color: var(--primary-sky);" id="manuscriptStatus">
+            Audited PRISMA-DTA Manuscript Draft
+          </div>
+          <div class="action-bar">
+            <button class="btn-export" id="btnDownloadDocx">📥 Export MS Word (.docx)</button>
+            <button class="btn-export" id="btnDownloadTxt">📄 Download Plain Text</button>
+            <button class="btn-export" id="btnCopyText">📋 Copy</button>
+          </div>
+        </div>
+
+        <div id="manuscriptViewer" class="manuscript-box">
+          Select a dataset or click 'Load Audited HbA1c Dataset' to view full manuscript.
+        </div>
+      </div>
+
+      <!-- Tab 2: PRISMA Flow Diagram -->
+      <div id="tabPrisma" class="tab-content">
+        <div class="flow-grid">
+          <div class="flow-card">
+            <div class="flow-number" id="flowFound">62</div>
+            <div class="flow-label">PubMed & EPMC Search</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-number" id="flowScreened">62</div>
+            <div class="flow-label">Records Screened</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-number" id="flowIncluded">36</div>
+            <div class="flow-label">Included Studies</div>
+          </div>
+          <div class="flow-card">
+            <div class="flow-number" id="flowExcluded">20</div>
+            <div class="flow-label">Excluded Studies</div>
+          </div>
+        </div>
+
+        <div class="manuscript-box" style="max-height: 450px;">
+          <h3>PRISMA-DTA Screening Protocol</h3>
+          <p>Multi-database systematic search executed across NCBI PubMed and Europe PMC REST APIs.</p>
+          <ul style="margin-left: 1.5rem; margin-top: 0.5rem;">
+            <li><strong>Human Diagnostic Accuracy Inclusion:</strong> Studies evaluating point-of-care HbA1c testing accuracy metrics.</li>
+            <li><strong>Zero-Hallucination Guardrail:</strong> Excluded narrative reviews and animal studies lacking 2x2 clinical parameters.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Tab 3: 2x2 Data Extraction Table -->
+      <div id="tabExtraction" class="tab-content">
+        <div class="table-responsive">
+          <table class="custom-table" id="extractionTable">
+            <thead>
+              <tr>
+                <th>PMID</th>
+                <th>Sample Size</th>
+                <th>Sensitivity</th>
+                <th>Specificity</th>
+                <th>Cutoff Value</th>
+                <th>Reference Standard</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamic Rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab 4: QUADAS-2 Risk of Bias -->
+      <div id="tabQuadas" class="tab-content">
+        <div class="table-responsive">
+          <table class="custom-table" id="quadasTable">
+            <thead>
+              <tr>
+                <th>PMID</th>
+                <th>Patient Selection</th>
+                <th>Index Test</th>
+                <th>Reference Standard</th>
+                <th>Flow & Timing</th>
+                <th>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Dynamic QUADAS-2 Rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
