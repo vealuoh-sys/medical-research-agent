@@ -31,7 +31,7 @@ def load_results_json(filename="results.json"):
 # ==============================================================================
 # SECTION 2: Build Structured Prompt for Gap Analysis
 # ==============================================================================
-def build_analysis_prompt(papers):
+def build_analysis_prompt(papers, max_papers=15, abstract_char_limit=1200):
     prompt_text = (
         "You are an expert medical research assistant conducting a systematic gap analysis. "
         "Below are research papers (with Title, PMID, Journal, Year, and Abstract) retrieved from PubMed.\n\n"
@@ -46,14 +46,18 @@ def build_analysis_prompt(papers):
         "   referencing the specific paper(s) (by PMID or Author/Title) that highlight or support this gap.\n\n"
         "==================== PAPERS DATA ====================\n\n"
     )
-    
-    for idx, p in enumerate(papers, 1):
+
+    for idx, p in enumerate(papers[:max_papers], 1):
+        abstract = p.get('abstract', 'No abstract available')
+        if len(abstract) > abstract_char_limit:
+            abstract = abstract[:abstract_char_limit] + " [...truncated for length]"
+
         prompt_text += f"--- PAPER {idx} ---\n"
         prompt_text += f"PMID: {p.get('pmid', 'N/A')}\n"
         prompt_text += f"Title: {p.get('title', 'N/A')}\n"
         prompt_text += f"Journal: {p.get('journal', 'N/A')} ({p.get('publication_year', 'N/A')})\n"
         prompt_text += f"Authors: {', '.join(p.get('authors', []))}\n"
-        prompt_text += f"Abstract: {p.get('abstract', 'No abstract available')}\n\n"
+        prompt_text += f"Abstract: {abstract}\n\n"
         
     return prompt_text
 

@@ -73,7 +73,12 @@ def run_stage_2(api_key):
         
     prompt = ga.build_analysis_prompt(papers)
     analysis_result = ga.call_groq_api(prompt, api_key)
-    
+
+    if not analysis_result:
+        print("  -> Retrying Stage 2 with a smaller, shorter request (in case the first was too large)...")
+        smaller_prompt = ga.build_analysis_prompt(papers, max_papers=8, abstract_char_limit=500)
+        analysis_result = ga.call_groq_api(smaller_prompt, api_key)
+
     if not analysis_result:
         print("[FAIL] Stage 2: Groq API call for gap analysis failed.")
         return False
