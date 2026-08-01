@@ -191,7 +191,7 @@ def _call_groq_raw(prompt, api_key, model="llama-3.3-70b-versatile", temperature
 # ==============================================================================
 # SECTION 5: Raw Gemini API Call (fallback provider)
 # ==============================================================================
-def _call_gemini_raw(prompt, api_key, model="gemini-2.0-flash", temperature=0.0):
+def _call_gemini_raw(prompt, api_key, model="gemini-2.5-flash", temperature=0.0):
     """
     Sends a structured prompt to Google AI Studio's Gemini API.
     Returns None on failure — never a placeholder/fabricated string.
