@@ -119,7 +119,7 @@ def call_groq_api(prompt, api_key, model="llama-3.3-70b-versatile", temperature=
     }
     payload_bytes = json.dumps(payload).encode("utf-8")
     
-    for attempt in range(1, 11):
+    for attempt in range(1, 5):
         try:
             with make_post_request(url, payload_bytes, headers=headers) as response:
                 res_data = json.loads(response.read().decode("utf-8"))
@@ -138,10 +138,10 @@ def call_groq_api(prompt, api_key, model="llama-3.3-70b-versatile", temperature=
             if e.code == 429:
                 retry_header = e.headers.get("Retry-After") if e.headers else None
                 if retry_header and retry_header.isdigit():
-                    wait_sec = int(retry_header) + 2
+                    wait_sec = min(int(retry_header) + 2, 20)
                 else:
-                    wait_sec = 15 * attempt
-                print(f"Rate limited (HTTP 429) on Groq API. Waiting {wait_sec}s (Attempt {attempt}/10)...")
+                    wait_sec = 8 * attempt
+                print(f"Rate limited (HTTP 429) on Groq API. Waiting {wait_sec}s (Attempt {attempt}/4)...")
                 time.sleep(wait_sec)
                 continue
             else:
