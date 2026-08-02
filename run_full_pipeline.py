@@ -39,7 +39,7 @@ def run_stage_1(topic):
     print("  STAGE 1: Primary PubMed Literature Search       ")
     print("==================================================")
     
-    id_list = ls.search_pubmed_ids(topic, max_results=20)
+    id_list = ls.search_pubmed_ids(topic, max_results=50)
     if not id_list:
         print("[FAIL] Stage 1: Search returned no results or failed to connect to PubMed.")
         return False, None
@@ -134,12 +134,14 @@ def run_stage_4(topic):
         
     raw_pmids = []
     for query in target_queries:
-        ids = ss.search_pubmed_ids(query, max_results=100)
-        raw_pmids.extend(ids)
+        pubmed_ids = ss.search_pubmed_ids(query, max_results=100)
+        europe_ids = ss.search_europe_pmc(query, max_results=50)
+        raw_pmids.extend(pubmed_ids)
+        raw_pmids.extend(europe_ids)
         time.sleep(0.3)
         
     unique_pmids = list(dict.fromkeys(raw_pmids))
-    print(f"  -> Total raw PMIDs retrieved: {len(raw_pmids)} | Unique deduplicated PMIDs: {len(unique_pmids)}")
+    print(f"  -> Total raw PMIDs retrieved (PubMed + Europe PMC): {len(raw_pmids)} | Unique deduplicated PMIDs: {len(unique_pmids)}")
     
     if not unique_pmids:
         print("[FAIL] Stage 4: No unique PMIDs retrieved across dynamic search queries.")
