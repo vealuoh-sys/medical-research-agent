@@ -199,21 +199,32 @@ _NUM = r"(\d+(?:\.\d+)?)"
 PATTERNS = {
     "sample_size": [
         rf"\bn\s*=\s*{_NUM}",
-        rf"{_NUM}\s+(?:patients|participants|subjects|children|infants|cases)\b",
+        rf"{_NUM}\s+(?:patients|participants|subjects|children|infants|cases|adults|individuals)\b",
+        rf"(?:enroll(?:ed|ing)|recruit(?:ed|ing)|includ(?:ed|ing)|study(?:ing)? of|cohort of|involving|total of)\s+(?:a\s+)?{_NUM}\b",
     ],
-    "sensitivity": [
-        rf"sensitivit(?:y|ies)[^.\d]{{0,30}}{_NUM}\s*%",
-        rf"{_NUM}\s*%[^.]{{0,15}}sensitivit",
+    "sensitivity_solo": [
+        rf"{_NUM}\s*%\s*sensitivit",
+        rf"sensitivit\w*[^%\d]{{0,15}}{_NUM}\s*%",
     ],
-    "specificity": [
-        rf"specificit(?:y|ies)[^.\d]{{0,30}}{_NUM}\s*%",
-        rf"{_NUM}\s*%[^.]{{0,15}}specificit",
+    "specificity_solo": [
+        rf"{_NUM}\s*%\s*specificit",
+        rf"specificit\w*[^%\d]{{0,15}}{_NUM}\s*%",
     ],
     "cutoff_value": [
         rf"cut[\s\-]?off[^.\d]{{0,20}}{_NUM}",
         rf"threshold[^.\d]{{0,20}}{_NUM}",
     ],
 }
+
+# Paired patterns: catches "sensitivity and specificity were X% and Y%" and
+# "X% sensitivity/Y% specificity" style phrasing, where a naive single-field
+# search would grab the wrong number. Order of capture groups matches order
+# of sens/spec named in the pattern itself.
+PAIR_PATTERNS = [
+    (rf"sensitivit\w*\D{{0,20}}(?:and|/)\D{{0,5}}specificit\w*\D{{0,20}}{_NUM}\s*%\D{{0,15}}{_NUM}\s*%", "sens_first"),
+    (rf"{_NUM}\s*%\s*sensitivit\w*\D{{0,10}}(?:and|/)\D{{0,10}}{_NUM}\s*%\s*specificit", "sens_first"),
+    (rf"specificit\w*\D{{0,20}}(?:and|/)\D{{0,5}}sensitivit\w*\D{{0,20}}{_NUM}\s*%\D{{0,15}}{_NUM}\s*%", "spec_first"),
+]
 
 REFERENCE_STANDARD_TERMS = ["gold standard", "reference standard", "confirmed by", "verified by", "biopsy", "culture", "pcr", "arterial blood gas", "venous blood gas"]
 
@@ -226,7 +237,15 @@ def regex_extract_row(paper):
             m = re.search(pat, text, re.IGNORECASE)
             if m:
                 return m.group(1)
-        return "NOT REPORTED"
+        return None
+
+    def find_pair():
+        for pat, order in PAIR_PATTERNS:
+            m = re.search(pat, text, re.IGNORECASE)
+            if m:
+                a, b = m.group(1), m.group(2)
+                return (a, b) if order == "sens_first" else (b, a)
+        return None
 
     ref_standard = "NOT REPORTED"
     text_lower = text.lower()
@@ -235,17 +254,22 @@ def regex_extract_row(paper):
             ref_standard = term
             break
 
-    sens = find_first(PATTERNS["sensitivity"])
-    spec = find_first(PATTERNS["specificity"])
+    pair = find_pair()
+    if pair:
+        sens, spec = pair
+    else:
+        sens = find_first(PATTERNS["sensitivity_solo"])
+        spec = find_first(PATTERNS["specificity_solo"])
+
     n = find_first(PATTERNS["sample_size"])
     cutoff = find_first(PATTERNS["cutoff_value"])
 
     return {
         "pmid": str(paper.get("pmid", "")).strip(),
-        "sample_size": n if n == "NOT REPORTED" else n,
-        "sensitivity": sens if sens == "NOT REPORTED" else f"{sens}%",
-        "specificity": spec if spec == "NOT REPORTED" else f"{spec}%",
-        "cutoff_value": cutoff,
+        "sample_size": n if n else "NOT REPORTED",
+        "sensitivity": f"{sens}%" if sens else "NOT REPORTED",
+        "specificity": f"{spec}%" if spec else "NOT REPORTED",
+        "cutoff_value": cutoff if cutoff else "NOT REPORTED",
         "reference_standard": ref_standard,
         "population": "Extracted via regex from abstract — verify against full text before publication.",
     }
