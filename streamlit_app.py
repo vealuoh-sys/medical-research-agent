@@ -89,6 +89,7 @@ if run_clicked:
         (0.15, "Stage 2: Gap analysis", pipeline.run_stage_2, (api_key, topic)),
         (0.25, "Stage 3: Generating candidate titles", pipeline.run_stage_3, (api_key, topic)),
         (0.35, "Stage 4: Multi-query systematic search (up to ~100-200 papers)", pipeline.run_stage_4, (topic,)),
+        (0.4, "Stage 4.5: Grey literature (trial registry + recent preprints)", pipeline.run_stage_4_5, (topic,)),
         (0.5, "Stage 5: Screening papers against inclusion criteria", pipeline.run_stage_5, (api_key, topic)),
         (0.6, "Stage 6: Extracting 2x2 diagnostic data", pipeline.run_stage_6, (api_key,)),
         (0.7, "Stage 6.5: QUADAS-2 risk of bias", pipeline.run_stage_6_5, (api_key,)),
@@ -113,14 +114,20 @@ if run_clicked:
 
         manuscript_text = _read_if_exists("research_paper_draft.txt")
         journals_text = _read_if_exists("journal_suggestions.txt")
+        trials_text = _read_if_exists("clinical_trials_registry.txt")
+        preprints_text = _read_if_exists("recent_preprints.txt")
 
         st.success("Pipeline complete.")
 
-        tab1, tab2 = st.tabs(["Manuscript", "Journal suggestions"])
+        tab1, tab2, tab3 = st.tabs(["Manuscript", "Journal suggestions", "Grey literature"])
         with tab1:
             st.text_area("Manuscript draft", manuscript_text, height=500)
         with tab2:
             st.text_area("Real DOAJ-verified open-access journals", journals_text, height=400)
+        with tab3:
+            st.caption("Supplementary sources — not included in screening, extraction, or pooling.")
+            st.text_area("Clinical trial registrations (ClinicalTrials.gov)", trials_text, height=250)
+            st.text_area("Recent preprints, last 180 days only (bioRxiv/medRxiv)", preprints_text, height=250)
 
         dl_col1, dl_col2 = st.columns(2)
         if os.path.exists("research_paper_draft.docx"):

@@ -28,6 +28,7 @@ import draft_paper as dp
 import api_client as ac
 import journal_suggester as js
 import no_api_engine as nae
+import grey_literature as gl
 
 
 # ==============================================================================
@@ -159,6 +160,34 @@ def run_stage_4(topic):
         
     print(f"[PASS] Stage 4 Complete: Saved {len(papers)} unique articles to systematic_results.json")
     return True, papers
+
+
+# ==============================================================================
+# STAGE 4.5: Grey Literature — Clinical Trial Registry & Recent Preprints
+# ==============================================================================
+# Non-fatal: these are supplementary, clearly-labeled files, not part of the
+# screening/extraction/meta-analysis flow. Failure here never halts the pipeline.
+def run_stage_4_5(topic):
+    print("\n==================================================")
+    print("  STAGE 4.5: Grey Literature & Trial Registry     ")
+    print("==================================================")
+
+    try:
+        trials = gl.search_clinical_trials(topic, max_results=20)
+        gl.save_clinical_trials(trials, topic)
+        print(f"  -> Saved clinical_trials_registry.txt ({len(trials)} trials)")
+    except Exception as e:
+        print(f"  -> ClinicalTrials.gov step skipped: {e}")
+
+    try:
+        preprints = gl.search_recent_preprints(topic, days_back=180)
+        gl.save_recent_preprints(preprints, topic, days_back=180)
+        print(f"  -> Saved recent_preprints.txt ({len(preprints)} matches, last 180 days)")
+    except Exception as e:
+        print(f"  -> Preprint scan skipped: {e}")
+
+    print("[PASS] Stage 4.5 Complete (supplementary — not used in pooling)")
+    return True
 
 
 # ==============================================================================
@@ -548,6 +577,9 @@ def main():
     if not ok4:
         print("\n[STOPPED] Pipeline halted at Stage 4. Please address error above.")
         sys.exit(1)
+        
+    # --- STAGE 4.5 ---
+    run_stage_4_5(topic)  # supplementary, never halts the pipeline
         
     # --- STAGE 5 ---
     ok5, screening_results = run_stage_5(api_key, topic)
